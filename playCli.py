@@ -24,7 +24,7 @@ def agentMove(table: Tensor) -> int:
 
 if __name__ == '__main__':
 	game: Game = Game()
-	agent: Agent = Agent(epsilon=0.0)
+	agent: Agent = Agent(epsilon=0.1)
 
 	if not Path('agent.pt').exists():
 		print('Nessun modello trovato, lancia prima train.py per allenarne uno nuovo.')
@@ -35,6 +35,7 @@ if __name__ == '__main__':
 
 	print('Inizio del gioco!')
 	newGame: bool = True
+	agent.eval()
 	with no_grad():
 		while newGame:
 			game.reset()

@@ -15,6 +15,7 @@ if __name__ == '__main__':
 
 	# Training loop
 	print('Inizio dell\'allenamento...')
+	agent.train()
 	for epoch in range(10_000):
 		game.reset()
 		done: bool = False
