@@ -34,10 +34,13 @@ class Game:
 		return -1
 	
 	def printTable(self) -> None:
-		symbols = {1: 'X', 2: 'O', 0: '.'}
-		board_str = ""
+		symbols: dict = {1: 'X', 2: 'O', 0: '.'}
+		boardStr: str = ""
+		numbers: str = ''
 		for i, cell in enumerate(self.table):
-			board_str += symbols[int(cell)] + " "
+			boardStr += symbols[int(cell)] + " "
+			numbers += f'{i+1} '
 			if (i + 1) % 3 == 0:
-				board_str += "\n"
-		print(board_str)
+				boardStr += f'\t{numbers}\n'
+				numbers = ''
+		print(boardStr)

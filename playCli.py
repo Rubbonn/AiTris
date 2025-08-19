@@ -57,6 +57,7 @@ if __name__ == '__main__':
 
 				win: int = game.checkWin()
 				if win >= 0:
+					game.printTable()
 					print(f'Ha vinto il giocatore {win}!') if win != 0 else print('Pareggio!')
 					break
 
