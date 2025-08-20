@@ -15,21 +15,21 @@ class Agent(nn.Module):
 			nn.ReLU(),
 			nn.Linear(128, 9),
 		)
-		self._epsilon: float = epsilon
+		self.epsilon: float = epsilon
 		self._batchSize: int = batchSize
-		self._memory: deque = deque([], 1_024)
+		self._memory: deque = deque([], 2048)
 		self._optimizer: optim.Adam = optim.Adam(self.parameters())
 		self._lossFn: nn.MSELoss = nn.MSELoss()
 
 		self._target: nn.Sequential = deepcopy(self._model).requires_grad_(False)
 		self._learnStep: int = 0
-		self._updateTargetFreq: int = 250
+		self._updateTargetFreq: int = 100
 	
 	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		return self._model(x)
 	
 	def chooseMove(self, table: torch.Tensor) -> int:
-		if torch.rand(1).item() < self._epsilon:
+		if torch.rand(1).item() < self.epsilon:
 			while True:
 				output = int(torch.randint(0, 9, (1,)).item())
 				if table[output] == 0:
@@ -56,7 +56,8 @@ class Agent(nn.Module):
 		invalidMask = (nextStates != 0)
 		q_predicted = self.forward(states).masked_fill((states != 0), -sys.maxsize).gather(1, actions.unsqueeze(1)).squeeze(1)
 		with torch.no_grad():
-			q_next = self._target(nextStates).masked_fill(invalidMask, -sys.maxsize).max(1)[0]
+			q_next = self.forward(nextStates).masked_fill(invalidMask, -sys.maxsize).argmax(1).unsqueeze(1)
+			q_next = self._target(nextStates).gather(1, q_next).squeeze(1)
 			q_target = rewards + 0.99 * q_next * (1 - dones.float())
 
 		loss = self._lossFn(q_predicted, q_target)
@@ -77,9 +78,6 @@ class Agent(nn.Module):
 
 		if self._learnStep % self._updateTargetFreq == 0:
 			self._target.load_state_dict(self._model.state_dict())
-
-	def setEpsilon(self, epsilon: float) -> None:
-		self._epsilon = epsilon
 	
 	def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True, assign: bool = False):
 		ret = super().load_state_dict(state_dict, strict, assign)

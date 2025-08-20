@@ -9,7 +9,7 @@ if __name__ == '__main__':
 	debug: bool = False
 	set_default_device('cuda' if cuda.is_available() else 'cpu')
 	game: Game = Game()
-	agent: Agent = Agent(epsilon=0.9)
+	agent: Agent = Agent(epsilon=0.99)
 
 	if Path('agent.pt').exists():
 		print('Caricamento del modello...')
@@ -17,15 +17,19 @@ if __name__ == '__main__':
 
 	# Training loop
 	print('Inizio dell\'allenamento...')
+	epochs = 20
+	matches = 1_000
+	episodes = epochs
+	epsilonDecay = max((episodes - 2.5)/episodes, 0)
 	agent.train()
-	for epoch in range(5):
+	for epoch in range(epochs):
 		#agent.reset()
-		for match in range(1_000):
+		agent.epsilon = (agent.epsilon - 0.01) * epsilonDecay + 0.01
+		for match in range(matches):
 			game.reset()
 			done: bool = False
-			agent.setEpsilon(max(0.01, 0.992**match))
 			if debug:
-				print(agent._epsilon)
+				print(agent.epsilon)
 			
 			while not done:
 				state: Tensor = game.table.clone().detach()
