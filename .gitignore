@@ -4,6 +4,7 @@
 /lib/
 /lib64
 /share/
+/Scripts/
 /pyvenv.cfg
 __pycache__
 

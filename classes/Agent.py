@@ -5,9 +5,10 @@ import torch
 import random
 from collections import deque
 from copy import deepcopy
+import sys
 
 class Agent(nn.Module):
-	def __init__(self, epsilon: float = 0.1, batchSize: int = 64):
+	def __init__(self, epsilon: float = 0.1, batchSize: int = 256):
 		super().__init__()
 		self._model: nn.Sequential = nn.Sequential(
 			nn.Linear(9, 128),
@@ -16,13 +17,13 @@ class Agent(nn.Module):
 		)
 		self._epsilon: float = epsilon
 		self._batchSize: int = batchSize
-		self._memory: deque = deque([], 5_000)
+		self._memory: deque = deque([], 1_024)
 		self._optimizer: optim.Adam = optim.Adam(self.parameters())
-		self._lossFn: nn.SmoothL1Loss = nn.SmoothL1Loss()
+		self._lossFn: nn.MSELoss = nn.MSELoss()
 
 		self._target: nn.Sequential = deepcopy(self._model).requires_grad_(False)
 		self._learnStep: int = 0
-		self._updateTargetFreq: int = 1000
+		self._updateTargetFreq: int = 250
 	
 	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		return self._model(x)
@@ -37,7 +38,7 @@ class Agent(nn.Module):
 		with torch.no_grad():
 			output = self.forward(table)
 			for i, v in enumerate(output):
-				output[i] = -torch.inf if table[i] != 0 else v
+				output[i] = -sys.maxsize if table[i] != 0 else v
 			
 			return int(torch.argmax(output).item())
 	
@@ -52,17 +53,28 @@ class Agent(nn.Module):
 		nextStates = torch.stack([ns for s, a, r, ns, d in miniBatch])
 		dones = torch.tensor([d for s, a, r, ns, d in miniBatch])
 
-		q_predicted = self.forward(states).gather(1, actions.unsqueeze(1)).squeeze(1)
+		invalidMask = (nextStates != 0)
+		q_predicted = self.forward(states).masked_fill((states != 0), -sys.maxsize).gather(1, actions.unsqueeze(1)).squeeze(1)
 		with torch.no_grad():
-			q_next = self._target(nextStates).max(1)[0]
-			q_target = rewards + 0.9 * q_next * (1 - dones.float())
-		
+			q_next = self._target(nextStates).masked_fill(invalidMask, -sys.maxsize).max(1)[0]
+			q_target = rewards + 0.99 * q_next * (1 - dones.float())
+
 		loss = self._lossFn(q_predicted, q_target)
 		self._optimizer.zero_grad()
 		loss.backward()
 		self._optimizer.step()
 
 		self._learnStep += 1
+		if self._learnStep % 100 == 0:
+			avg_pred = q_predicted.mean().item()
+			avg_target = q_target.mean().item()
+			avg_diff = (q_target - q_predicted).abs().mean().item()
+			print(f"[Step {self._learnStep}] "
+				f"Q_pred: {avg_pred:.3f} | "
+				f"Q_target: {avg_target:.3f} | "
+				f"Diff: {avg_diff:.3f} | "
+				f"Loss: {loss.item():.4f}")
+
 		if self._learnStep % self._updateTargetFreq == 0:
 			self._target.load_state_dict(self._model.state_dict())
 
@@ -73,3 +85,9 @@ class Agent(nn.Module):
 		ret = super().load_state_dict(state_dict, strict, assign)
 		self._target: nn.Sequential = deepcopy(self._model).requires_grad_(False)
 		return ret
+	
+	def reset(self) -> None:
+		self._memory.clear()
+		self._target: nn.Sequential = deepcopy(self._model).requires_grad_(False)
+		self._optimizer: optim.Adam = optim.Adam(self.parameters())
+		self._lossFn: nn.MSELoss = nn.MSELoss()
