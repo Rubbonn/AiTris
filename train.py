@@ -7,7 +7,7 @@ import torch.cuda as cuda
 
 if __name__ == '__main__':
 	debug: bool = False
-	set_default_device('cuda' if cuda.is_available() else 'cpu')
+	#set_default_device('cuda' if cuda.is_available() else 'cpu')
 	game: Game = Game()
 	agent: Agent = Agent(epsilon=0.99)
 
@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
 	# Training loop
 	print('Inizio dell\'allenamento...')
-	epochs = 20
+	epochs = 25
 	matches = 1_000
 	episodes = epochs
 	epsilonDecay = max((episodes - 2.5)/episodes, 0)

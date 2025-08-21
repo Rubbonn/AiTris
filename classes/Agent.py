@@ -8,7 +8,7 @@ from copy import deepcopy
 import sys
 
 class Agent(nn.Module):
-	def __init__(self, epsilon: float = 0.1, batchSize: int = 256):
+	def __init__(self, epsilon: float = 0.01, batchSize: int = 64):
 		super().__init__()
 		self._model: nn.Sequential = nn.Sequential(
 			nn.Linear(9, 128),
@@ -23,7 +23,7 @@ class Agent(nn.Module):
 
 		self._target: nn.Sequential = deepcopy(self._model).requires_grad_(False)
 		self._learnStep: int = 0
-		self._updateTargetFreq: int = 100
+		self._updateTargetFreq: int = 1000
 	
 	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		return self._model(x)
