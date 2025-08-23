@@ -48,7 +48,7 @@ if __name__ == '__main__':
 					game.reverseTable()
 				while True:
 					move: int = playerMove(game.table) if startingPlayer == 1 else agentMove(game.table)
-					if game.move(move):
+					if game.move(move, startingPlayer):
 						break
 					elif startingPlayer == 1:
 						print('Mossa non valida, scegline un altra.')

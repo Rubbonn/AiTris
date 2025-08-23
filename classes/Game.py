@@ -7,7 +7,9 @@ class Game:
 	def reset(self) -> None:
 		self.table = torch.zeros(9)
 
-	def move(self, position: int) -> bool:
+	def move(self, position: int, player: int) -> bool:
+		if position < 0 or position > 8 or player not in [1, 2]:
+			return False
 		if self.table[position] != 0:
 			return False
 		self.table[position] = 1

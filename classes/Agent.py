@@ -11,13 +11,19 @@ class Agent(nn.Module):
 	def __init__(self, epsilon: float = 0.01, batchSize: int = 64):
 		super().__init__()
 		self._model: nn.Sequential = nn.Sequential(
-			nn.Linear(9, 128),
+			nn.Linear(9, 512),
 			nn.ReLU(),
-			nn.Linear(128, 9),
+			nn.Linear(512, 256),
+			nn.ReLU(),
+			nn.Linear(256, 128),
+			nn.ReLU(),
+			nn.Linear(128, 64),
+			nn.ReLU(),
+			nn.Linear(64, 9),
 		)
 		self.epsilon: float = epsilon
 		self._batchSize: int = batchSize
-		self._memory: deque = deque([], 2048)
+		self._memory: deque = deque([], 10000)
 		self._optimizer: optim.Adam = optim.Adam(self.parameters())
 		self._lossFn: nn.MSELoss = nn.MSELoss()
 
@@ -63,6 +69,7 @@ class Agent(nn.Module):
 		loss = self._lossFn(q_predicted, q_target)
 		self._optimizer.zero_grad()
 		loss.backward()
+		#torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
 		self._optimizer.step()
 
 		self._learnStep += 1
