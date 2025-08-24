@@ -8,12 +8,10 @@ from copy import deepcopy
 import sys
 
 class Agent(nn.Module):
-	def __init__(self, epsilon: float = 0.01, batchSize: int = 64):
+	def __init__(self, epsilon: float = 0.01, batchSize: int = 128):
 		super().__init__()
 		self._model: nn.Sequential = nn.Sequential(
-			nn.Linear(9, 512),
-			nn.ReLU(),
-			nn.Linear(512, 256),
+			nn.Linear(9, 256),
 			nn.ReLU(),
 			nn.Linear(256, 128),
 			nn.ReLU(),
@@ -23,9 +21,9 @@ class Agent(nn.Module):
 		)
 		self.epsilon: float = epsilon
 		self._batchSize: int = batchSize
-		self._memory: deque = deque([], 10000)
+		self._memory: deque = deque([], 20000)
 		self._optimizer: optim.Adam = optim.Adam(self.parameters())
-		self._lossFn: nn.MSELoss = nn.MSELoss()
+		self._lossFn: nn.SmoothL1Loss = nn.SmoothL1Loss()
 
 		self._target: nn.Sequential = deepcopy(self._model).requires_grad_(False)
 		self._learnStep: int = 0
@@ -69,7 +67,7 @@ class Agent(nn.Module):
 		loss = self._lossFn(q_predicted, q_target)
 		self._optimizer.zero_grad()
 		loss.backward()
-		#torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+		torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
 		self._optimizer.step()
 
 		self._learnStep += 1
@@ -95,4 +93,4 @@ class Agent(nn.Module):
 		self._memory.clear()
 		self._target: nn.Sequential = deepcopy(self._model).requires_grad_(False)
 		self._optimizer: optim.Adam = optim.Adam(self.parameters())
-		self._lossFn: nn.MSELoss = nn.MSELoss()
+		self._lossFn: nn.SmoothL1Loss = nn.SmoothL1Loss()

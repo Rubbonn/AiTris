@@ -77,7 +77,7 @@ if __name__ == '__main__':
 	episodes = epochs * matches
 	agent.train()
 	for epoch in range(epochs):
-		agent.epsilon = 0.01 + (0.9 - 0.01) * exp(tensor(-(epoch / 10))).item()
+		agent.epsilon = 0.01 + (0.9 - 0.01) * exp(tensor(-(epoch / 40))).item()
 		trainMatches(matches)
 		
 	
