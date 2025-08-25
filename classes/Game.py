@@ -20,13 +20,13 @@ class Game:
 		self.table[self.table == 3] = 0
 	
 	def checkWin(self) -> int:
-		win_conditions = [
+		winConditions = [
 			(0, 1, 2), (3, 4, 5), (6, 7, 8),  # Rows
 			(0, 3, 6), (1, 4, 7), (2, 5, 8),  # Columns
 			(0, 4, 8), (2, 4, 6)              # Diagonals
 		]
 		
-		for a, b, c in win_conditions:
+		for a, b, c in winConditions:
 			if self.table[a] == self.table[b] == self.table[c] != 0:
 				return int(self.table[a])
 		
@@ -34,6 +34,21 @@ class Game:
 			return 0
 		
 		return -1
+	
+	def getWinningMoves(self, player: int) -> list[int]:
+		winConditions = [
+			(0, 1, 2), (3, 4, 5), (6, 7, 8),  # Rows
+			(0, 3, 6), (1, 4, 7), (2, 5, 8),  # Columns
+			(0, 4, 8), (2, 4, 6)              # Diagonals
+		]
+		winMoves: list = []
+		for a, b, c in winConditions:
+			values: list = [self.table[a], self.table[b], self.table[c]]
+			if values.count(player) == 2 and values.count(0) == 1:
+				winAction: int = [a, b, c][values.index(0)]
+				winMoves.append(winAction)
+		return winMoves
+
 	
 	def printTable(self) -> None:
 		symbols: dict = {1: 'X', 2: 'O', 0: '.'}
@@ -46,3 +61,6 @@ class Game:
 				boardStr += f'\t{numbers}\n'
 				numbers = ''
 		print(boardStr)
+
+	def cloneTable(self) -> torch.Tensor:
+		return self.table.clone().detach()
