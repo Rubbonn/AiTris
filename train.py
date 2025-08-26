@@ -91,17 +91,19 @@ if __name__ == '__main__':
 
 	# Training loop
 	print('Inizio dell\'allenamento...')
-	epochs = 5
-	matches = 5000
+	epochs: int = 50
+	matches: int = 2000
+	decay_rate: int = int(epochs * 0.5)
 	agent.train()
 	for epoch in range(epochs):
 		startTime = time.perf_counter()
-		agent.epsilon = 0.01 + (0.99 - 0.01) * torch.exp(torch.tensor(-(epoch / (epochs * 0.8)))).item()
+		agent.epsilon = 0.01 + (0.99 - 0.01) * torch.exp(torch.tensor(-(epoch / decay_rate))).item()
 		won, draws = trainMatches(matches)
 		print(
 			f"Epoca {epoch + 1}/{epochs} | "
-			f"Vinte: {won} | "
-			f"Pareggiate: {draws} | "
+			f'Epsilon: {agent.epsilon:.3f} | '
+			f'Vinte: {won} | '
+			f'Pareggiate: {draws} | '
 			f'Durata: {time.perf_counter() - startTime:.2f} sec'
 		)
 		

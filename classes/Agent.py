@@ -66,7 +66,7 @@ class Agent(nn.Module):
 		loss = self._lossFn(q_predicted, q_target)
 		self._optimizer.zero_grad()
 		loss.backward()
-		torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+		nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
 		self._optimizer.step()
 
 		self._learnStep += 1
