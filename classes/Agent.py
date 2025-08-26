@@ -49,6 +49,10 @@ class Agent(nn.Module):
 		if len(self._memory) < self._batchSize:
 			return
 		
+		self._learnStep += 1
+		if self._learnStep % self._updateTargetFreq == 0:
+			self._target.load_state_dict(self._model.state_dict())
+		
 		miniBatch = random.sample(self._memory, self._batchSize)
 		states = torch.stack([s for s, a, r, ns, d in miniBatch])
 		actions = torch.tensor([a for s, a, r, ns, d in miniBatch])
@@ -68,10 +72,6 @@ class Agent(nn.Module):
 		loss.backward()
 		nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
 		self._optimizer.step()
-
-		self._learnStep += 1
-		if self._learnStep % self._updateTargetFreq == 0:
-			self._target.load_state_dict(self._model.state_dict())
 	
 	def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True, assign: bool = False):
 		ret = super().load_state_dict(state_dict, strict, assign)
