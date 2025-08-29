@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gioco del Tris</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .cell {
+            transition: background-color 0.2s ease-in-out;
+        }
+        .winning-cell {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg text-center w-full max-w-sm mx-4">
+        
+        <!-- Intestazione con pulsante e punteggio -->
+        <div class="flex justify-between items-center mb-6">
+            <button id="new-game-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 transition-all">
+                Nuova partita
+            </button>
+            <div id="score" class="text-gray-700 font-medium bg-gray-100 px-3 py-1.5 rounded-md">
+                Vinte: 0 / 0
+            </div>
+        </div>
+
+        <!-- Messaggio di stato -->
+        <div id="status-message" class="mb-4 h-6 text-lg font-bold text-gray-800"></div>
+
+        <!-- Scacchiera del Tris -->
+        <div id="board" class="grid grid-cols-3 gap-3">
+            <!-- Le celle verranno generate da JavaScript -->
+        </div>
+
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const scoreElement = document.getElementById('score');
+        const statusMessage = document.getElementById('status-message');
+
+        let currentGameId = null;
+        let currentPlayer = 'X';
+        let playerSymbol = 'X'; // 'X' o 'O'
+        let computerSymbol = 'O'; // 'X' o 'O'
+        let boardState = Array(9).fill(null);
+        let gameActive = true;
+        let score = {
+            wins: 0,
+            total: 0
+        };
+
+        const winningCombinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Righe
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Colonne
+            [0, 4, 8], [2, 4, 6]             // Diagonali
+        ];
+
+        // Funzione per creare la scacchiera
+        function createBoard() {
+            board.innerHTML = ''; // Pulisce la scacchiera precedente
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell', 'w-20', 'h-20', 'sm:w-24', 'sm:h-24', 'bg-gray-200', 'flex', 'items-center', 'justify-center', 'text-4xl', 'sm:text-5xl', 'font-bold', 'rounded-lg', 'cursor-pointer', 'hover:bg-gray-300');
+                cell.dataset.index = i;
+                cell.addEventListener('click', handleCellClick);
+                board.appendChild(cell);
+            }
+        }
+        
+        // Gestisce il click su una cella
+        function handleCellClick(event) {
+            const clickedCell = event.target;
+            const cellIndex = parseInt(clickedCell.dataset.index);
+
+            // Permette il click solo se è il turno del giocatore umano
+            if (boardState[cellIndex] || !gameActive || currentPlayer !== playerSymbol) {
+                return;
+            }
+
+            makeMove(cellIndex, playerSymbol);
+            
+            if (gameActive) {
+                // Il turno del computer viene chiamato immediatamente
+                // la logica asincrona gestirà l'attesa e l'interfaccia utente
+                computerMove();
+            }
+        }
+
+        // Esegue la mossa per un giocatore
+        function makeMove(index, player) {
+            boardState[index] = player;
+            const cellElement = board.querySelector(`[data-index='${index}']`);
+            cellElement.textContent = player;
+            cellElement.classList.add(player === 'X' ? 'text-blue-600' : 'text-red-600');
+            cellElement.classList.remove('cursor-pointer', 'hover:bg-gray-300');
+
+            if (checkWin(player)) {
+                endGame(false, player);
+            } else if (boardState.every(cell => cell)) {
+                endGame(true); // Pareggio
+            } else {
+                switchPlayer();
+            }
+        }
+        
+        // Logica per la mossa del computer (ora asincrona per la chiamata AJAX)
+        async function computerMove() {
+            const moveGameId = currentGameId; // Cattura l'ID della partita per cui questa mossa è stata richiesta
+
+            if (!gameActive) return;
+
+            // Disabilita la scacchiera e mostra un messaggio di attesa
+            board.style.pointerEvents = 'none';
+            statusMessage.textContent = 'Il computer sta pensando...';
+
+            try {
+                // --- INIZIO SEZIONE DA MODIFICARE PER LA CHIAMATA AJAX ---
+                
+                const adaptedBoard = boardState.map(cell => cell === null ? 0 : (cell === computerSymbol ? 1 : 2));
+                const response = await fetch('http://localhost:5000/play', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ board: adaptedBoard }), // Invia lo stato attuale della scacchiera
+                });
+
+                if (!response.ok) {
+                    throw new Error('Errore di rete o del server');
+                }
+
+                // --> MODIFICA CHIAVE: Interrompi la mossa se nel frattempo è iniziata una nuova partita.
+                // Se l'ID della partita attuale non corrisponde a quello di quando la mossa è iniziata,
+                // significa che l'utente ha premuto "Nuova partita".
+                if (moveGameId !== currentGameId) {
+                    return; // Abbandona la mossa della partita vecchia.
+                }
+
+                const data = await response.json();
+                const computerCellIndex = data.move;
+                
+                // --- FINE SEZIONE DA MODIFICARE ---
+                
+                // Esegue la mossa ricevuta dal server (o dalla logica fittizia)
+                if (boardState[computerCellIndex] === null) {
+                    makeMove(computerCellIndex, computerSymbol);
+                } else {
+                    console.error("Il computer ha tentato una mossa non valida sulla cella:", computerCellIndex);
+                    statusMessage.textContent = 'Errore del computer. Riprova.';
+                }
+
+            } catch (error) {
+                console.error('Impossibile ottenere la mossa dal computer:', error);
+                statusMessage.textContent = 'Errore di connessione.';
+            } finally {
+                // Riabilita la scacchiera solo se la partita è ancora attiva
+                if (gameActive) {
+                    board.style.pointerEvents = 'auto';
+                }
+            }
+        }
+
+        // Cambia il turno del giocatore
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            if (gameActive) {
+                if (currentPlayer === playerSymbol) {
+                    statusMessage.textContent = `È il tuo turno (${playerSymbol})`;
+                }
+                // Non è necessario un 'else' perché computerMove() imposta il proprio messaggio di attesa.
+            }
+        }
+
+        // Controlla se c'è un vincitore
+        function checkWin(player) {
+            return winningCombinations.some(combination => {
+                return combination.every(index => boardState[index] === player);
+            });
+        }
+        
+        // Termina la partita
+        function endGame(isDraw, winner = null) {
+            gameActive = false;
+            // Assicura che la scacchiera sia sempre cliccabile a fine partita
+            board.style.pointerEvents = 'auto'; 
+            
+            if (isDraw) {
+                statusMessage.textContent = 'Pareggio!';
+                score.total++;
+            } else {
+                statusMessage.textContent = `Vince ${winner}!`;
+                // Incrementa la vittoria solo se il vincitore è il giocatore umano
+                if (winner === playerSymbol) {
+                    score.wins++;
+                }
+                score.total++;
+                highlightWinningCells(winner);
+            }
+            updateScore();
+        }
+
+        // Evidenzia le celle vincenti
+        function highlightWinningCells(winner) {
+            const winningCombination = winningCombinations.find(combination => {
+                return combination.every(index => boardState[index] === winner);
+            });
+
+            if (winningCombination) {
+                const highlightColor = winner === playerSymbol ? 'bg-green-300' : 'bg-red-300';
+                winningCombination.forEach(index => {
+                    const cell = board.querySelector(`[data-index='${index}']`);
+                    cell.classList.add(highlightColor, 'winning-cell');
+                });
+            }
+        }
+
+        // Aggiorna il punteggio visualizzato
+        function updateScore() {
+            scoreElement.textContent = `Vinte: ${score.wins} / ${score.total}`;
+        }
+
+        // Inizia una nuova partita
+        function startNewGame() {
+            currentGameId = Date.now(); // Genera un ID univoco per la nuova partita
+            boardState.fill(null);
+            gameActive = true;
+            
+            // Decide casualmente chi inizia
+            const playerStarts = Math.random() < 0.5;
+
+            if (playerStarts) {
+                playerSymbol = 'X';
+                computerSymbol = 'O';
+                currentPlayer = 'X';
+                statusMessage.textContent = 'Inizi tu (X)!';
+            } else {
+                playerSymbol = 'O';
+                computerSymbol = 'X';
+                currentPlayer = 'X'; // Inizia sempre la 'X'
+                statusMessage.textContent = 'Inizia il computer (X)...';
+            }
+
+            // Assicura che la scacchiera sia cliccabile all'inizio
+            board.style.pointerEvents = 'auto'; 
+            createBoard(); // Ricrea la scacchiera per pulire stili e testo
+
+            // Se il computer inizia, fa la prima mossa
+            if (!playerStarts) {
+                computerMove();
+            }
+        }
+
+        // Event listener per il pulsante "Nuova partita"
+        newGameBtn.addEventListener('click', startNewGame);
+
+        // Inizia la prima partita al caricamento della pagina
+        startNewGame();
+    </script>
+</body>
+</html>
+
+
+
+
+
