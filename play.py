@@ -6,6 +6,7 @@ from classes.Agent import Agent
 app: Flask = Flask(__name__)
 agent: Agent = Agent()
 agent.load_state_dict(torch.load('agent.pt'))
+agent.eval()  # Disable gradient calculation
 
 @app.route('/')
 def homepage():
@@ -13,12 +14,11 @@ def homepage():
 
 @app.route('/play', methods=['POST'])
 def play():
-	table: Any = request.json
-	if table is not None:
-		move: int = agent.chooseMove(torch.tensor(table, dtype=torch.float32))
+	data: Any = request.json
+	if data is not None and 'board' in data:
+		move: int = agent.chooseMove(torch.tensor(data['board'], dtype=torch.float32))
 	else:
 		abort(400)
-	print(move)
 	return {'move': move}
 
 
